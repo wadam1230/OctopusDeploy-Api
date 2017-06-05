@@ -1,0 +1,44 @@
+using System.Linq;
+using Octopus.Client;
+
+namespace ConsoleApp1
+{
+    internal class Program
+    {
+        private static void Main(string[] args)
+        {
+            var octoUrl = "";
+            var apiKey = "";
+            var client = new OctopusClient(new OctopusServerEndpoint(octoUrl, apiKey));
+            var repo = new OctopusRepository(client);
+
+            // Get my communicty step template
+            var communityStepTemplate = repo.ActionTemplates.Get("ActionTemplates-1");
+
+            // Find project(s) and deployment processes that use the custom step template
+            var project = repo.Projects.Get("Projects-3");
+            var deploymentProcess = repo.DeploymentProcesses.Get(project.DeploymentProcessId);
+            var steps = deploymentProcess.Steps.Where(x => x.Actions.Any(a => a.Properties["Octopus.Action.Template.Id"].Value == "ActionTemplates-3"));
+
+            // Run through the steps/actions and update the properties to use the community step template
+            foreach (var step in steps)
+            {
+                foreach (var action in step.Actions)
+                {
+                    if (action.Properties["Octopus.Action.Template.Id"].Value == "ActionTemplates-3")
+                    {
+                        action.Properties["Octopus.Action.Script.Syntax"] = communityStepTemplate.Properties["Octopus.Action.Script.Syntax"];
+                        action.Properties["Octopus.Action.Script.ScriptSource"] = communityStepTemplate.Properties["Octopus.Action.Script.ScriptSource"];
+                        action.Properties["Octopus.Action.RunOnServer"] = communityStepTemplate.Properties["Octopus.Action.RunOnServer"];
+                        action.Properties["Octopus.Action.Script.Syntax"] = communityStepTemplate.Properties["Octopus.Action.Script.Syntax"];
+                        action.Properties["Octopus.Action.Template.Id"] = communityStepTemplate.Id;
+                        action.Properties["Octopus.Action.Template.Version"] = communityStepTemplate.Version.ToString();
+                    }
+                }
+            }
+
+            // Persist the changes
+            repo.DeploymentProcesses.Modify(deploymentProcess);
+        }
+    }
+}
